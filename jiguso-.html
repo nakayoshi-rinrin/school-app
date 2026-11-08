@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ジグソーパズル</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e8efe0;--ink:#1f3a34;--card:#fbfaf3;--acc:#e4572e;--line:#2f7d6d;--bd:#b9c9b0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14302b;--ink:#eaf2e3;--card:#1d4039;--line:#7fd1bd;--bd:#3c6a60}}
+:root[data-theme="dark"]{--bg:#14302b;--ink:#eaf2e3;--card:#1d4039;--line:#7fd1bd;--bd:#3c6a60}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;font-weight:500;overflow:hidden;-webkit-user-select:none;user-select:none}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,label:focus-within{outline:3px solid var(--acc);outline-offset:2px}
+#start{position:fixed;inset:0;overflow:auto;display:flex;flex-direction:column;align-items:center;padding:64px 16px 16px}
+#fs{position:absolute;left:12px;top:calc(env(safe-area-inset-top,0px) + 12px);border:2px solid var(--ink);background:var(--card);border-radius:12px;padding:8px 14px;font-weight:900}
+h1{display:flex;margin:8px 0 24px;font-size:clamp(28px,8vw,56px);font-weight:900}
+h1 span{position:relative;color:#fff;padding:6px 8px;margin-right:6px;border-radius:10px;transform:rotate(-3deg)}
+h1 span:nth-child(even){transform:rotate(3deg) translateY(4px)}
+h1 span:not(:last-child)::after{content:"";position:absolute;right:-9px;top:50%;width:14px;height:14px;margin-top:-7px;border-radius:50%;background:inherit}
+h1 span:nth-child(4n+1){background:#e4572e}h1 span:nth-child(4n+2){background:#2f7d6d}h1 span:nth-child(4n+3){background:#c9820f}h1 span:nth-child(4n){background:#3b6fb6}
+.card{width:min(440px,100%);background:var(--card);border:2px solid var(--bd);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:22px}
+.card h2{margin:0 0 10px;font-size:18px;font-weight:900}
+.pick{display:flex;align-items:center;gap:14px}
+.btn{display:inline-block;border:2px solid var(--ink);background:var(--card);border-radius:12px;padding:10px 16px;font-weight:900}
+#pv{width:96px;height:72px;object-fit:cover;border-radius:8px;background:var(--bd)}
+.segs{display:flex;gap:10px}
+.seg{flex:1;border:2px solid var(--ink);background:var(--card);border-radius:12px;padding:12px 0;font-size:20px;font-weight:900}
+.seg[aria-pressed=true]{background:var(--ink);color:var(--card)}
+#go{border:0;background:var(--acc);color:#fff;border-radius:14px;padding:16px;font-size:22px;font-weight:900}
+#go:disabled{opacity:.4;cursor:not-allowed}
+footer{margin-top:auto;padding-top:24px;font-weight:900;letter-spacing:.05em}
+#game{position:fixed;inset:0;display:none;touch-action:none}
+#game.on{display:block}
+#bar{position:absolute;left:8px;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:60;display:flex;gap:8px}
+#bar .btn{padding:6px 12px;font-size:14px}
+#bd{position:absolute;background:color-mix(in srgb,var(--card) 70%,transparent);box-shadow:0 0 0 3px var(--ink)}
+#bd canvas{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity .2s}
+#bd.hint canvas{opacity:.3}
+#ln{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
+.pc{position:absolute;z-index:10;touch-action:none;cursor:grab;filter:drop-shadow(0 3px 4px rgba(0,0,0,.35))}
+.pc canvas{display:block;pointer-events:none}
+.pc.snap{transition:left .12s,top .12s}
+.pc.done{z-index:2;cursor:default;filter:none;pointer-events:none}
+#win{position:absolute;inset:0;z-index:90;display:none;pointer-events:none;flex-direction:column;align-items:center;justify-content:space-between;padding:6vh 16px}
+#win.on{display:flex}
+#win h2{margin:0;font-size:clamp(40px,11vw,96px);font-weight:900;color:var(--acc);-webkit-text-stroke:3px #fff;paint-order:stroke fill;animation:pop .6s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.2);opacity:0}}
+#win div{display:flex;gap:12px;pointer-events:auto}
+#cf{position:absolute;inset:0;z-index:100;pointer-events:none}
+@media (prefers-reduced-motion:reduce){#win h2{animation:none}}
+</style></head><body>
+<section id="start">
+<button id="fs" type="button">⛶ 全画面</button>
+<h1 aria-label="ジグソーパズル"><span>ジ</span><span>グ</span><span>ソ</span><span>ー</span><span>パ</span><span>ズ</span><span>ル</span></h1>
+<div class="card">
+<div><h2>1. 画像をえらぶ</h2><div class="pick"><label class="btn">画像をアップロード<input id="file" type="file" accept="image/*" hidden></label><img id="pv" alt="" hidden></div></div>
+<div><h2>2. ピースの数</h2><div class="segs"><button class="seg" data-n="4" aria-pressed="false">4</button><button class="seg" data-n="9" aria-pressed="true">9</button><button class="seg" data-n="16" aria-pressed="false">16</button></div></div>
+<button id="go" disabled>はじめる</button>
+</div>
+<footer>きだっち＠明倫小</footer>
+</section>
+<section id="game">
+<div id="bar"><button class="btn" id="back">もどる</button><button class="btn" id="hint">ヒント</button></div>
+<div id="bd"></div><div id="field"></div>
+<div id="win"><h2>おめでとう！</h2><div><button class="btn" id="again">もういちど</button><button class="btn" id="other">ほかの絵で</button></div></div>
+<canvas id="cf"></canvas>
+</section>
+<script>
+const $=s=>document.querySelector(s);
+let img=null,N=9,ac,raf,drag=null,z=10;
+// 全画面
+const de=document.documentElement,rf=de.requestFullscreen||de.webkitRequestFullscreen;
+if(!rf)$('#fs').hidden=true;
+$('#fs').onclick=()=>{try{if(document.fullscreenElement||document.webkitFullscreenElement)(document.exitFullscreen||document.webkitExitFullscreen).call(document);else Promise.resolve(rf.call(de)).catch(()=>{})}catch(e){}};
+// 画像
+$('#file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{img=i;$('#pv').src=i.src;$('#pv').hidden=false;$('#go').disabled=false};i.src=r.result};r.readAsDataURL(f)};
+document.querySelectorAll('.seg').forEach(b=>b.onclick=()=>{N=+b.dataset.n;document.querySelectorAll('.seg').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+$('#go').onclick=()=>{A();play()};
+$('#back').onclick=$('#other').onclick=()=>{stopFx();$('#game').classList.remove('on');$('#start').style.display='flex'};
+$('#again').onclick=()=>play();
+$('#hint').onclick=()=>$('#bd').classList.toggle('hint');
+// 音
+function A(){ac=ac||new(window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();return ac}
+function tone(f,t,d,type,v){const a=A(),o=a.createOscillator(),g=a.createGain(),s=a.currentTime+t;o.type=type;o.frequency.value=f;o.connect(g);g.connect(a.destination);g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(v,s+.01);g.gain.exponentialRampToValueAtTime(.001,s+d);o.start(s);o.stop(s+d+.05)}
+const blip=()=>{tone(880,0,.12,'triangle',.3);tone(1320,.07,.2,'triangle',.3)};
+function fanfare(){[[523,0,.15],[659,.15,.15],[784,.3,.15],[1047,.45,.45],[784,.95,.15],[880,1.1,.15],[988,1.25,.15],[1175,1.4,.45],[988,1.9,.15],[1175,2.05,.15],[1319,2.2,.15],[1568,2.35,.15],[1319,2.5,.15],[1047,2.65,.2],[1568,2.9,.9]].forEach(([f,t,d])=>{tone(f,t,d,'square',.1);tone(f/2,t,d,'triangle',.18)});
+try{const u=new SpeechSynthesisUtterance('おめでとう！');u.lang='ja-JP';u.pitch=1.4;speechSynthesis.speak(u)}catch(e){}}
+// 花吹雪
+function confetti(){const c=$('#cf'),x=c.getContext('2d');c.width=innerWidth;c.height=innerHeight;const col=['#e4572e','#f2a541','#3b6fb6','#2f7d6d','#e86fa3','#ffd23f'];
+const mk=y=>({x:Math.random()*c.width,y,w:6+Math.random()*8,h:10+Math.random()*10,vy:1.5+Math.random()*3,vx:Math.random()*2-1,r:Math.random()*6,vr:Math.random()*.2-.1,s:Math.random()*6,c:col[Math.random()*6|0]});
+const ps=Array.from({length:180},()=>mk(-Math.random()*c.height));
+(function f(){x.clearRect(0,0,c.width,c.height);ps.forEach(p=>{p.y+=p.vy;p.s+=.05;p.x+=p.vx+Math.sin(p.s);p.r+=p.vr;if(p.y>c.height+20)Object.assign(p,mk(-20));x.save();x.translate(p.x,p.y);x.rotate(p.r);x.scale(1,Math.cos(p.s));x.fillStyle=p.c;x.fillRect(-p.w/2,-p.h/2,p.w,p.h);x.restore()});raf=requestAnimationFrame(f)})()}
+function stopFx(){cancelAnimationFrame(raf);const c=$('#cf');c.getContext('2d').clearRect(0,0,c.width,c.height);$('#win').classList.remove('on');try{speechSynthesis.cancel()}catch(e){}}
+// ピースの縁（ジグソー形）
+function edge(c,ox,oy,ux,uy,nx,ny,L,T,s){const P=(a,b)=>[ox+ux*a*L+nx*b*T*s,oy+uy*a*L+ny*b*T*s];
+if(!s){c.lineTo(...P(1,0));return}
+c.lineTo(...P(.4,0));c.bezierCurveTo(...P(.4,.1),...P(.3,.12),...P(.3,.22));c.bezierCurveTo(...P(.3,.36),...P(.7,.36),...P(.7,.22));c.bezierCurveTo(...P(.7,.12),...P(.6,.1),...P(.6,0));c.lineTo(...P(1,0))}
+// ゲーム
+function play(){
+stopFx();$('#start').style.display='none';$('#game').classList.add('on');$('#bd').classList.remove('hint');
+const n=Math.sqrt(N),W=innerWidth,H=innerHeight,dpr=Math.min(devicePixelRatio||1,2),ia=img.width/img.height;
+let bw=W<H?W*.8:W*.54,bh=W<H?H*.42:H*.56;if(bw/bh>ia)bw=bh*ia;else bh=bw/ia;bw=Math.floor(bw);bh=Math.floor(bh);
+const w=bw/n,h=bh/n,T=Math.min(w,h),p=T*.4,bx=(W-bw)/2,by=(H-bh)/2+12;
+const sc=document.createElement('canvas');sc.width=bw*dpr;sc.height=bh*dpr;
+{const s=Math.max(sc.width/img.width,sc.height/img.height),dw=img.width*s,dh=img.height*s;sc.getContext('2d').drawImage(img,(sc.width-dw)/2,(sc.height-dh)/2,dw,dh)}
+const bd=$('#bd');bd.style.cssText=`left:${bx}px;top:${by}px;width:${bw}px;height:${bh}px`;bd.innerHTML='';bd.appendChild(sc);
+const fld=$('#field');fld.innerHTML='';
+const NS='http://www.w3.org/2000/svg',svg=document.createElementNS(NS,'svg');svg.id='ln';fld.appendChild(svg);
+const rnd=()=>Math.random()<.5?1:-1,hor=[],ver=[];
+for(let r=0;r<n;r++){hor.push([]);ver.push([]);for(let c=0;c<n;c++){hor[r].push(rnd());ver[r].push(rnd())}}
+// 盤面の目安線
+for(let i=1;i<n;i++)for(const v of[0,1]){const l=document.createElementNS(NS,'line');l.setAttribute('x1',v?bx+i*w:bx);l.setAttribute('x2',v?bx+i*w:bx+bw);l.setAttribute('y1',v?by:by+i*h);l.setAttribute('y2',v?by+bh:by+i*h);l.style.cssText='stroke:var(--ink);opacity:.25;stroke-dasharray:4 4';svg.appendChild(l)}
+let placed=0;
+for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+
+const cv=document.createElement('canvas');cv.width=(w+2*p)*dpr;cv.height=(h+2*p)*dpr;cv.style.width=w+2*p+'px';cv.style.height=h+2*p+'px';
+const x=cv.getContext('2d');x.scale(dpr,dpr);
+const tp=r?-ver[r-1][c]:0,rt=c<n-1?hor[r][c]:0,bt=r<n-1?ver[r][c]:0,lf=c?-hor[r][c-1]:0;
+x.beginPath();x.moveTo(p,p);edge(x,p,p,1,0,0,-1,w,T,tp);edge(x,p+w,p,0,1,1,0,h,T,rt);edge(x,p+w,p+h,-1,0,0,1,w,T,bt);edge(x,p,p+h,0,-1,-1,0,h,T,lf);x.closePath();
+x.save();x.clip();x.drawImage(sc,0,0,sc.width,sc.height,p-c*w,p-r*h,bw,bh);x.restore();
+x.lineWidth=2;x.strokeStyle='rgba(255,255,255,.75)';x.stroke();x.lineWidth=1;x.strokeStyle='rgba(0,0,0,.4)';x.stroke();
+const el=document.createElement('div');el.className='pc';el.appendChild(cv);
+
+const cw=w+2*p,ch=h+2*p,tx=bx+c*w-p,ty=by+r*h-p;
+let px,py,t=0;do{px=Math.random()*(W-cw);py=52+Math.random()*(H-ch-52);t++}while(t<300&&px+cw>bx-8&&px<bx+bw+8&&py+ch>by-8&&py<by+bh+8);
+// リード線
+
+
+const st={x:px,y:py};
+const mv=()=>{el.style.left=st.x+'px';el.style.top=st.y+'px'};mv();
+el.onpointerdown=e=>{el.setPointerCapture(e.pointerId);drag=st;st.dx=e.clientX-st.x;st.dy=e.clientY-st.y;el.style.zIndex=++z;el.classList.remove('snap');e.preventDefault()};
+el.onpointermove=e=>{if(drag!==st)return;st.x=e.clientX-st.dx;st.y=e.clientY-st.dy;mv()};
+el.onpointerup=el.onpointercancel=()=>{if(drag!==st)return;drag=null;
+if(Math.hypot(st.x-tx,st.y-ty)<T*.35){el.classList.add('snap','done');st.x=tx;st.y=ty;mv();blip();if(++placed===N)setTimeout(win,500)}};
+fld.appendChild(el)}
+}
+function win(){$('#win').classList.add('on');fanfare();confetti()}
+</script></body></html>
